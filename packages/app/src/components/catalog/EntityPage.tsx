@@ -29,6 +29,10 @@ import {
   EntityRelationWarning,
 } from '@backstage/plugin-catalog';
 import {
+  isGithubActionsAvailable,
+  EntityGithubActionsContent,
+} from '@backstage/plugin-github-actions';
+import {
   EntityUserProfileCard,
   EntityGroupProfileCard,
   EntityMembersListCard,
@@ -51,13 +55,24 @@ import {
   RELATION_PROVIDES_API,
 } from '@backstage/catalog-model';
 
+import { EntitySonarQubeCard } from '@backstage-community/plugin-sonarqube';
 import { TechDocsAddons } from '@backstage/plugin-techdocs-react';
 import { ReportIssue } from '@backstage/plugin-techdocs-module-addons-contrib';
 
+import { EntityTechInsightsScorecardContent } from '@backstage/plugin-tech-insights';
+
 import {
-  EntityKubernetesContent,
-  isKubernetesAvailable,
-} from '@backstage/plugin-kubernetes';
+    isPluginApplicableToEntity as isPagerDutyAvailable,
+    EntityPagerDutyCard
+} from '@pagerduty/backstage-plugin'
+
+// Github Insights Plugin
+import { 
+  EntityGithubInsightsContent,
+  EntityGithubInsightsLanguagesCard,
+  EntityGithubInsightsReleasesCard,
+  isGithubInsightsAvailable, 
+} from '@roadiehq/backstage-plugin-github-insights';
 
 const techdocsContent = (
   <EntityTechdocsContent>
@@ -71,13 +86,9 @@ const cicdContent = (
   // This is an example of how you can implement your company's logic in entity page.
   // You can for example enforce that all components of type 'service' should use GitHubActions
   <EntitySwitch>
-    {/*
-      Here you can add support for different CI/CD services, for example
-      using @backstage-community/plugin-github-actions as follows:
       <EntitySwitch.Case if={isGithubActionsAvailable}>
         <EntityGithubActionsContent />
       </EntitySwitch.Case>
-     */}
 
     <EntitySwitch.Case>
       <EmptyState
@@ -125,23 +136,48 @@ const entityWarningContent = (
     </EntitySwitch>
   </>
 );
-
+const MISSING_ANNOTATION_READ_MORE_URL = 'https://backstage.io/docs/features/software-catalog/descriptor'
 const overviewContent = (
   <Grid container spacing={3} alignItems="stretch">
     {entityWarningContent}
+
     <Grid item md={6}>
       <EntityAboutCard variant="gridItem" />
     </Grid>
+
     <Grid item md={6} xs={12}>
       <EntityCatalogGraphCard variant="gridItem" height={400} />
+    </Grid>
+
+    <Grid item md={6}>
+      <EntitySonarQubeCard variant="gridItem" missingAnnotationReadMoreUrl={MISSING_ANNOTATION_READ_MORE_URL} />
     </Grid>
 
     <Grid item md={4} xs={12}>
       <EntityLinksCard />
     </Grid>
+
     <Grid item md={8} xs={12}>
       <EntityHasSubcomponentsCard variant="gridItem" />
     </Grid>
+    
+    <EntitySwitch>
+      <EntitySwitch.Case if={isPagerDutyAvailable}>
+        <Grid item md={6}>
+          <EntityPagerDutyCard />
+        </Grid>
+      </EntitySwitch.Case>
+    </EntitySwitch>
+
+
+    <EntitySwitch>
+      <EntitySwitch.Case if={isGithubInsightsAvailable}>
+        <Grid item md={6} xs={12}>
+          <EntityGithubInsightsLanguagesCard />
+          <EntityGithubInsightsReleasesCard />
+        </Grid>
+      </EntitySwitch.Case>
+    </EntitySwitch>
   </Grid>
 );
 
@@ -153,14 +189,6 @@ const serviceEntityPage = (
 
     <EntityLayout.Route path="/ci-cd" title="CI/CD">
       {cicdContent}
-    </EntityLayout.Route>
-
-    <EntityLayout.Route
-      path="/kubernetes"
-      title="Kubernetes"
-      if={isKubernetesAvailable}
-    >
-      <EntityKubernetesContent />
     </EntityLayout.Route>
 
     <EntityLayout.Route path="/api" title="API">
@@ -188,6 +216,24 @@ const serviceEntityPage = (
     <EntityLayout.Route path="/docs" title="Docs">
       {techdocsContent}
     </EntityLayout.Route>
+
+    // Github Insights Plugin
+    <EntityLayout.Route
+      path="/github-insights"
+      title="Github Insights">
+      <EntityGithubInsightsContent />
+    </EntityLayout.Route>
+
+    // Tech Insights Plugin
+    <EntityLayout.Route
+      path="/tech-insights"
+      title="Scorecards">
+      <EntityTechInsightsScorecardContent
+        title="Completeness scorecard"
+        description="Is your metadata complete and up to date?"
+      />
+    </EntityLayout.Route>
+
   </EntityLayout>
 );
 
@@ -199,14 +245,6 @@ const websiteEntityPage = (
 
     <EntityLayout.Route path="/ci-cd" title="CI/CD">
       {cicdContent}
-    </EntityLayout.Route>
-
-    <EntityLayout.Route
-      path="/kubernetes"
-      title="Kubernetes"
-      if={isKubernetesAvailable}
-    >
-      <EntityKubernetesContent />
     </EntityLayout.Route>
 
     <EntityLayout.Route path="/dependencies" title="Dependencies">

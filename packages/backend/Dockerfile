@@ -1,33 +1,44 @@
 # This dockerfile builds an image for the backend package.
-# It should be executed with the root of the repo as docker context.
-#
-# Before building this image, be sure to have run the following commands in the repo root:
-#
-# yarn install --immutable
-# yarn tsc
-# yarn build:backend
-#
-# Once the commands have been run, you can build the image using `yarn build-image`
+# It should be built using the build.sh script inside of the backstage/scripts folder
 
 FROM node:20-bookworm-slim
 
-# Set Python interpreter for `node-gyp` to use
+# Trick to set the environment of the image via a build argument so that it has it during runtime
+ARG APP_CONFIG
+ENV APP_CONFIG=${APP_CONFIG:-"app-config.yaml"}
+
+# Set Python interpreter for `node-gyp` (build-dependency for isolated-vm) to use
 ENV PYTHON=/usr/bin/python3
 
-# Install isolate-vm dependencies, these are needed by the @backstage/plugin-scaffolder-backend.
+# Install isolated-vm dependencies, these are needed by the @backstage/plugin-scaffolder-backend.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends python3 g++ build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-# Install sqlite3 dependencies. You can skip this if you don't use sqlite3 in the image,
-# in which case you should also move better-sqlite3 to "devDependencies" in package.json.
+COPY --chown=node:node .yarn ./.yarn
+COPY --chown=node:node .yarnrc.yml ./
+COPY --chown=node:node backstage.json ./
+
+# Install Cookiecutter dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && \
-    apt-get install -y --no-install-recommends libsqlite3-dev && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends python3-venv python3-pip
+
+# Set up a virtual environment to bypass `externally-managed-environment` error
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install Techdocs dependencies
+# Info: https://backstage.io/docs/features/techdocs/getting-started#disabling-docker-in-docker-situation-optional
+RUN pip3 install mkdocs-techdocs-core==1.2.3 mkdocs-material \
+    mkdocs-same-dir mkdocs-awesome-pages-plugin \
+    mkdocs-pdf-export-plugin mkdocs-minify-plugin
+
+# Cookiecutter libraries + templating dependencies
+RUN pip3 install cookiecutter termcolor
 
 # From here on we use the least-privileged `node` user to run the backend.
 USER node
@@ -37,15 +48,8 @@ USER node
 # If this occurs, then ensure BuildKit is enabled (`DOCKER_BUILDKIT=1`) so the app dir is correctly created as `node`.
 WORKDIR /app
 
-# Copy files needed by Yarn
-COPY --chown=node:node .yarn ./.yarn
-COPY --chown=node:node .yarnrc.yml ./
-COPY --chown=node:node backstage.json ./
-
-# This switches many Node.js dependencies to production mode.
+# This switches many Node.js dependencies to production mode, skipping dev-dependencies on yarn install.
 ENV NODE_ENV=production
-
-# This disables node snapshot for Node 20 to work with the Scaffolder
 ENV NODE_OPTIONS="--no-node-snapshot"
 
 # Copy repo skeleton first, to avoid unnecessary docker cache invalidation.
@@ -55,13 +59,12 @@ COPY --chown=node:node yarn.lock package.json packages/backend/dist/skeleton.tar
 RUN tar xzf skeleton.tar.gz && rm skeleton.tar.gz
 
 RUN --mount=type=cache,target=/home/node/.cache/yarn,sharing=locked,uid=1000,gid=1000 \
-    yarn workspaces focus --all --production && rm -rf "$(yarn cache clean)"
-
-# This will include the examples, if you don't need these simply remove this line
-COPY --chown=node:node examples ./examples
+    yarn workspaces focus --all --production && rm -rf "$(yarn cache clean)" \
 
 # Then copy the rest of the backend bundle, along with any other files we might want.
-COPY --chown=node:node packages/backend/dist/bundle.tar.gz app-config*.yaml ./
+COPY --chown=node:node packages/backend/dist/bundle.tar.gz ${APP_CONFIG} ./
 RUN tar xzf bundle.tar.gz && rm bundle.tar.gz
 
-CMD ["node", "packages/backend", "--config", "app-config.yaml", "--config", "app-config.production.yaml"]
+# Use Shell form to allow for environment variable substitution, has problems with exec form
+# https://docs.docker.com/reference/dockerfile/#shell-and-exec-form
+CMD node packages/backend --config ${APP_CONFIG}

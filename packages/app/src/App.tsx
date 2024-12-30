@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route } from 'react-router-dom';
+import { Route } from 'react-router-dom';
 import { apiDocsPlugin, ApiExplorerPage } from '@backstage/plugin-api-docs';
 import {
   CatalogEntityPage,
@@ -26,18 +26,39 @@ import { entityPage } from './components/catalog/EntityPage';
 import { searchPage } from './components/search/SearchPage';
 import { Root } from './components/Root';
 
-import {
-  AlertDisplay,
-  OAuthRequestDialog,
-  SignInPage,
-} from '@backstage/core-components';
+import { HomepageCompositionRoot } from '@backstage/plugin-home';
+import { ComposableHomeComponent } from './components/home/HomePage';
+import { FilteredVisitListener } from "./components/home/FilteredVisitListener";
+
+import { AlertDisplay, OAuthRequestDialog } from '@backstage/core-components';
 import { createApp } from '@backstage/app-defaults';
 import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
 import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
 import { RequirePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
+import { AnnouncementsPage } from '@procore-oss/backstage-plugin-announcements';
+
+import { githubAuthApiRef } from '@backstage/core-plugin-api';
+import { SignInPage } from '@backstage/core-components';
+// import { ComplianceReportPage } from '@internal/backstage-plugin-compliance-report';
 
 const app = createApp({
+  components: {
+    SignInPage: props => (
+      <SignInPage
+        {...props}
+        auto
+        providers={[
+        'guest',
+        {
+          id: 'github-auth-provider',
+          title: 'Vizio GitHub',
+          message: 'Sign in using Vizio GitHub Credentials',
+          apiRef: githubAuthApiRef,
+        }]}
+      />
+    ),
+  },
   apis,
   bindRoutes({ bind }) {
     bind(catalogPlugin.externalRoutes, {
@@ -56,14 +77,16 @@ const app = createApp({
       catalogIndex: catalogPlugin.routes.catalogIndex,
     });
   },
-  components: {
-    SignInPage: props => <SignInPage {...props} auto providers={['guest']} />,
-  },
 });
 
 const routes = (
   <FlatRoutes>
-    <Route path="/" element={<Navigate to="catalog" />} />
+
+    <Route path="/" element={<HomepageCompositionRoot />}>
+      <ComposableHomeComponent />
+    </Route>
+    // AnnouncementsPage plugin
+    <Route path="/announcements" element={<AnnouncementsPage />} />
     <Route path="/catalog" element={<CatalogIndexPage />} />
     <Route
       path="/catalog/:namespace/:kind/:name"
@@ -95,6 +118,7 @@ const routes = (
     </Route>
     <Route path="/settings" element={<UserSettingsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
+    {/*<Route path="/compliance-report" element={<ComplianceReportPage />} />*/}
   </FlatRoutes>
 );
 
@@ -103,6 +127,7 @@ export default app.createRoot(
     <AlertDisplay />
     <OAuthRequestDialog />
     <AppRouter>
+      <FilteredVisitListener />
       <Root>{routes}</Root>
     </AppRouter>
   </>,

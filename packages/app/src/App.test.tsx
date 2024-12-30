@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react';
+import { renderWithEffects } from '@backstage/test-utils';
 import App from './App';
 
 describe('App', () => {
@@ -9,7 +9,9 @@ describe('App', () => {
       APP_CONFIG: [
         {
           data: {
-            app: { title: 'Test' },
+            app: {
+              title: 'Test',
+            },
             backend: { baseUrl: 'http://localhost:7007' },
             techdocs: {
               storageUrl: 'http://localhost:7007/api/techdocs/static/docs',
@@ -20,10 +22,7 @@ describe('App', () => {
       ] as any,
     };
 
-    const rendered = render(<App />);
-
-    await waitFor(() => {
-      expect(rendered.baseElement).toBeInTheDocument();
-    });
+    const rendered = await renderWithEffects(<App />);
+    expect(rendered.baseElement).toBeInTheDocument();
   });
 });

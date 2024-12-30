@@ -1,9 +1,12 @@
 import React, { PropsWithChildren } from 'react';
 import { makeStyles } from '@material-ui/core';
 import HomeIcon from '@material-ui/icons/Home';
+import CategoryIcon from '@material-ui/icons/Category';
 import ExtensionIcon from '@material-ui/icons/Extension';
+import AnnouncementIcon from '@material-ui/icons/Announcement';
 import LibraryBooks from '@material-ui/icons/LibraryBooks';
 import CreateComponentIcon from '@material-ui/icons/AddCircleOutline';
+import ReportIcon from '@material-ui/icons/Assessment';
 import LogoFull from './LogoFull';
 import LogoIcon from './LogoIcon';
 import {
@@ -25,8 +28,6 @@ import {
 } from '@backstage/core-components';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
-import { MyGroupsSidebarItem } from '@backstage/plugin-org';
-import GroupIcon from '@material-ui/icons/People';
 
 const useSidebarLogoStyles = makeStyles({
   root: {
@@ -46,7 +47,6 @@ const useSidebarLogoStyles = makeStyles({
 const SidebarLogo = () => {
   const classes = useSidebarLogoStyles();
   const { isOpen } = useSidebarOpenState();
-
   return (
     <div className={classes.root}>
       <Link to="/" underline="none" className={classes.link} aria-label="Home">
@@ -66,19 +66,32 @@ export const Root = ({ children }: PropsWithChildren<{}>) => (
       <SidebarDivider />
       <SidebarGroup label="Menu" icon={<MenuIcon />}>
         {/* Global nav, not org-specific */}
-        <SidebarItem icon={HomeIcon} to="catalog" text="Home" />
-        <MyGroupsSidebarItem
-          singularTitle="My Group"
-          pluralTitle="My Groups"
-          icon={GroupIcon}
+        <SidebarItem icon={HomeIcon} to="/" text="Home" />
+        <SidebarItem
+          icon={CategoryIcon}
+          to="catalog?filters[user]=all"
+          text="Catalog"
         />
-        <SidebarItem icon={ExtensionIcon} to="api-docs" text="APIs" />
-        <SidebarItem icon={LibraryBooks} to="docs" text="Docs" />
+        <SidebarItem
+          icon={AnnouncementIcon}
+          to="announcements"
+          text="Announcements"
+        />
+        <SidebarItem
+          icon={ExtensionIcon}
+          to="api-docs?filters[user]=all"
+          text="APIs"
+        />
+        <SidebarItem
+          icon={LibraryBooks}
+          to="docs?filters[user]=all"
+          text="Docs"
+        />
         <SidebarItem icon={CreateComponentIcon} to="create" text="Create..." />
         {/* End global nav */}
         <SidebarDivider />
         <SidebarScrollWrapper>
-          {/* Items in this group will be scrollable if they run out of space */}
+          <SidebarItem icon={ReportIcon} to="compliance-report" text="Onboarding Report" />
         </SidebarScrollWrapper>
       </SidebarGroup>
       <SidebarSpace />

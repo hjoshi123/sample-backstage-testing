@@ -1,113 +1,245 @@
 app:
-  title: Scaffolded Backstage App
+  title: VIZIO Backstage Local Deployment
+  # Should be the same as backend.baseUrl when using the `app-backend` plugin.
   baseUrl: http://localhost:3000
-
-organization:
-  name: My Company
-
+  extensions:
+    - entity-card:announcements/announcements
+    - nav-item:announcements
+auth:
+  environment: development
+  providers:
+    guest: {}
+    github:
+      development:
+        clientId: ${GITHUB_CLIENT_ID}
+        clientSecret: ${GITHUB_CLIENT_SECRET}
+        signIn:
+          resolvers:
+            - resolver: usernameMatchingUserEntityName
 backend:
-  # Used for enabling authentication, secret is shared by all backend plugins
-  # See https://backstage.io/docs/auth/service-to-service-auth for
-  # information on the format
-  # auth:
-  #   keys:
-  #     - secret: ${BACKEND_SECRET}
   baseUrl: http://localhost:7007
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
   listen:
     port: 7007
-    # Uncomment the following host directive to bind to specific interfaces
-    # host: 127.0.0.1
-  csp:
-    connect-src: ["'self'", 'http:', 'https:']
-    # Content-Security-Policy directives follow the Helmet format: https://helmetjs.github.io/#reference
-    # Default Helmet Content-Security-Policy values can be removed by setting the key to false
-  cors:
-    origin: http://localhost:3000
-    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
-    credentials: true
-  # This is for local development only, it is not recommended to use this in production
-  # The production database configuration is stored in app-config.production.yaml
-  database:
-    client: better-sqlite3
-    connection: ':memory:'
-  # workingDirectory: /tmp # Use this to configure a working directory for the scaffolder, defaults to the OS temp-dir
+
+scaffolder:
+# see https://backstage.io/docs/features/software-templates/configuration for software template options
+
+catalog:
+  # Overrides the default list locations from app-config.yaml as these contain example data.
+  # See https://backstage.io/docs/features/software-catalog/#adding-components-to-the-catalog for more details
+  # on how to get entities into the catalog.
+  providers:
+    githubOrg:
+      - id: Vizio-Backstage
+        githubUrl: 'https://github.com'
+        orgs: ['BuddyTV', 'vizio-plat-svcs', 'vizio-ad-tech', 'CognitiveNetworks']
+        schedule:
+          frequency: PT60M
+          timeout: PT15M
 
 integrations:
   github:
     - host: github.com
-      # This is a Personal Access Token or PAT from GitHub. You can find out how to generate this token, and more information
-      # about setting up the GitHub integration here: https://backstage.io/docs/integrations/github/locations#configuration
-      token: ${GITHUB_TOKEN}
-    ### Example for how to add your GitHub Enterprise instance using the API:
-    # - host: ghe.example.net
-    #   apiBaseUrl: https://ghe.example.net/api/v3
-    #   token: ${GHE_TOKEN}
+      orgs:
+        - BuddyTV
+        - vizio-plat-svcs
+        - vizio-ad-tech
+        - CognitiveNetworks
+      apps:
+        - appId: ${GITHUB_APP_ID}
+          privateKey: ${GITHUB_APP_PRIVATE_KEY}
+          clientId: ${GITHUB_CLIENT_ID}
+          clientSecret: ${GITHUB_CLIENT_SECRET}
+          webhookSecret: ${GITHUB_WEBHOOK_SECRET}
 
-proxy:
-  ### Example for how to add a proxy endpoint for the frontend.
-  ### A typical reason to do this is to handle HTTPS and CORS for internal services.
-  # endpoints:
-  #   '/test':
-  #     target: 'https://example.com'
-  #     changeOrigin: true
+pagerDuty:
+  apiBaseUrl: https://api.pagerduty.com
+  apiToken: ${COGNET_PAGERDUTY_API_KEY}
+  apiTokenVizio: ${VIZIO_PAGERDUTY_API_KEY}
+  apiTokenCognet: ${COGNET_PAGERDUTY_API_KEY}
 
-# Reference documentation http://backstage.io/docs/features/techdocs/configuration
-# Note: After experimenting with basic setup, use CI/CD to generate docs
-# and an external cloud storage when deploying TechDocs for production use-case.
-# https://backstage.io/docs/features/techdocs/how-to-guides#how-to-migrate-from-techdocs-basic-to-recommended-deployment-approach
+sonarqube:
+  baseUrl: ${SONARQUBE_URL}
+  apiKey: ${SONARQUBE_API_KEY}
+
 techdocs:
-  builder: 'local' # Alternatives - 'external'
-  generator:
-    runIn: 'docker' # Alternatives - 'local'
+  builder: local
   publisher:
-    type: 'local' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation for using alternatives.
+    type: local
+  generator:
+    runIn: local
+  cache:
+    # 2 Hours (in milliseconds)
+    ttl: 7200000
+    # 20 Seconds (in milliseconds)
+    readTimeout: 20000
 
-auth:
-  # see https://backstage.io/docs/auth/ to learn about auth providers
-  providers:
-    # See https://backstage.io/docs/auth/guest/provider
-    guest: {}
-
-scaffolder:
-  # see https://backstage.io/docs/features/software-templates/configuration for software template options
-
-catalog:
-  import:
-    entityFilename: catalog-info.yaml
-    pullRequestBranchName: backstage-integration
-  rules:
-    - allow: [Component, System, API, Resource, Location]
-  locations:
-    # Local example data, file locations are relative to the backend process, typically `packages/backend`
-    - type: file
-      target: ../../examples/entities.yaml
-
-    # Local example template
-    - type: file
-      target: ../../examples/template/template.yaml
-      rules:
-        - allow: [Template]
-
-    # Local example organizational data
-    - type: file
-      target: ../../examples/org.yaml
-      rules:
-        - allow: [User, Group]
-
-    ## Uncomment these lines to add more example data
-    # - type: url
-    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
-
-    ## Uncomment these lines to add an example org
-    # - type: url
-    #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/acme-corp.yaml
-    #   rules:
-    #     - allow: [User, Group]
-
-kubernetes:
-  # see https://backstage.io/docs/features/kubernetes/configuration for kubernetes configuration options
-
-# see https://backstage.io/docs/permissions/getting-started for more on the permission framework
+techInsights:
+  factRetrievers:
+    entityMetadataFactRetriever:
+      # How often the fact retriever should run
+      cadence: '0 * * * *'
+      # How long to keep the fact data
+      lifecycle: { timeToLive: { months: 6 } }
+    entityOwnershipFactRetriever:
+      cadence: '0 * * * *'
+      lifecycle: { timeToLive: { months: 6 } }
+    techdocsFactRetriever:
+      cadence: '0 * * * *'
+      lifecycle: { timeToLive: { months: 6 } }
+  factChecker:
+    checks:
+      groupOwnerCheck:
+        type: json-rules-engine
+        name: Group Owner Check
+        description: Verifies that a group has been set as the spec.owner for this entity
+        factIds:
+          - entityOwnershipFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: hasGroupOwner
+                operator: equal
+                value: true
+      titleCheck:
+        type: json-rules-engine
+        name: Title Check
+        description: Verifies that a Title, used to improve readability, has been set for this entity
+        factIds:
+          - entityMetadataFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: hasTitle
+                operator: equal
+                value: true
+      techDocsCheck:
+        type: json-rules-engine
+        name: TechDocs Check
+        description: Verifies that a TechDocs, has been enabled for this entity
+        factIds:
+          - techdocsFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: hasAnnotationBackstageIoTechdocsRef
+                operator: equal
+                value: true
+      sonarQubeProjectExistsCheck:
+        type: json-rules-engine
+        name: SonarQube Project Exists Check
+        description: Verifies that a TechDocs, has been enabled for this entity
+        factIds:
+          - sonarQubeFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: sonarQubeProjectExists
+                operator: equal
+                value: true
+      sonarQubeCoverageCheck:
+        type: json-rules-engine
+        name: SonarQube Coverage Check
+        description: Verifies that a TechDocs, has been enabled for this entity
+        factIds:
+          - sonarQubeFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: sonarQubeCoverage
+                operator: greaterThanInclusive
+                value: 70
+      pagerDutyServiceExistsCheck:
+        type: json-rules-engine
+        name: PagerDuty Service Exists Check
+        description: Checks if the PagerDuty service exists for this entity
+        factIds:
+          - pagerDutyFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: pagerDutyServiceExists
+                operator: equal
+                value: true
+      pagerDutyHasScheduleCheck:
+        type: json-rules-engine
+        name: PagerDuty Schedule Check
+        description: Checks if there is a schedule associated with the PagerDuty service for this entity
+        factIds:
+          - pagerDutyFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: pagerDutyHasSchedule
+                operator: equal
+                value: true
+      pagerDutyHasOnCallCheck:
+        type: json-rules-engine
+        name: PagerDuty On-Call Check
+        description: Checks if there is someone on-call for the PagerDuty service associated with this entity
+        factIds:
+          - pagerDutyFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: pagerDutyHasOnCall
+                operator: equal
+                value: true
+      protectedBranchesCheck:
+        type: json-rules-engine
+        name: Protected Branches Check
+        description: Verifies that the main branch is protected
+        factIds:
+          - gitHubFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: gitHubProtectedBranches
+                operator: equal
+                value: true
+      prApprovalRequiredCheck:
+        type: json-rules-engine
+        name: PR Approval Required Check
+        description: Checks if PRs require approval before merging
+        factIds:
+          - gitHubFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: gitHubPrApprovalRequired
+                operator: equal
+                value: true
+      noForcePushCheck:
+        type: json-rules-engine
+        name: No Force Push Check
+        description: Checks if force-push is disallowed on protected branches
+        factIds:
+          - gitHubFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: gitHubNoForcePush
+                operator: equal
+                value: true
+      ciChecksExistCheck:
+        type: json-rules-engine
+        name: CI Checks Exist Check
+        description: Checks for CI testing with GitHub Actions
+        factIds:
+          - gitHubFactRetriever
+        rule:
+          conditions:
+            all:
+              - fact: gitHubCiChecksExist
+                operator: equal
+                value: true
 permission:
   # setting this to `false` will disable permissions
   enabled: true
